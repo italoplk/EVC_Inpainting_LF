@@ -142,7 +142,7 @@ class InpaitingViT(nn.Module):
 
 if __name__ == '__main__':
     device = "cuda"
-
+    # IDM NVIEWS
     model = InpaitingViT(
         context_size = 64,
         predictor_size= 32,

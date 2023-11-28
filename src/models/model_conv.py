@@ -17,7 +17,7 @@ class NewBlockUp(nn.Module):
     def forward(self, x):
         return self.f(x)
     
-
+# IDM NVIEWS
 class ModelConv(nn.Module):
     def __init__(self, nFilters = 32, nBottleneck = 512,context_size = 64, predictor_size = 32, my_decoder = False):
         super().__init__()
@@ -69,6 +69,7 @@ class ModelConv(nn.Module):
         crop = self.crop(rec)
         return crop, rec, features
 
+# IDM NVIEWS
 if __name__ == "__main__":
     x = torch.rand((8,1,64,64)).to("cuda")
     model = ModelConv(

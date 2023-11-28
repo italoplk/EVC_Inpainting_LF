@@ -54,6 +54,7 @@ def get_center_crop(img,crop_height,crop_width):
     return img.crop(area_crop)
 
 class MPAIDataset(Dataset):
+    # IDM took the 13*13
     def __init__(self, path, context_size = 64, predictor_size = 32, bit_depth=8, transforms = None,
                   repeats = 1, x_crop = None, y_crop = None, center_crop = False):
         names = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
@@ -66,8 +67,8 @@ class MPAIDataset(Dataset):
         self.predictor_size = predictor_size
         self.transforms = transforms
         self.bit_depth = bit_depth
-        self.x_crop =x_crop
-        self.y_crop =y_crop
+        self.x_crop  = x_crop
+        self.y_crop = y_crop
         self.center_crop = center_crop
 
     

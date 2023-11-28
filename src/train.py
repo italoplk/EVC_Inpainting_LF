@@ -23,7 +23,7 @@ import albumentations as A
 from torch.utils.data import DataLoader
 
 from tqdm import tqdm
-import wandb
+#import wandb
 import os
 import shutil
 
@@ -33,9 +33,9 @@ from models_vit import InpaitingViT, InpaitingGViT
 
 # train.py --model conv --epochs 1000 --train-repeats 31 --test-repeats 50 --batch-size 16 --n-crops 4 --save /scratch/output_ImageInpainting/train_conv_mydecoder --project-name train_conv_mydecoder --lr-scheduler custom_exp
 
-best_loss_val = torch.inf
-best_loss_train = torch.inf
-best_loss_test = torch.inf
+best_loss_val = float('inf')
+best_loss_train = float('inf')
+best_loss_test = float('inf')
 
 def main():
     global best_loss_val
@@ -53,7 +53,7 @@ def main():
     args.save = f'{args.save}_cs{args.context_size}_ps{args.predictor_size}_n_crops{args.n_crops}_trainrep{args.train_repeats}_testrep{args.test_repeats}'
     os.makedirs(args.save, exist_ok=True)
     
-    wandb.login()
+    #wandb.login()
 
     
     if(args.model == 'conv'):
@@ -87,6 +87,7 @@ def main():
         ) 
     elif(args.model == 'vit'):
         model = InpaitingViT(
+            # IDM NVIEWS
             context_size = args.context_size,
             predictor_size= args.predictor_size,
             dim = 768,
@@ -98,6 +99,8 @@ def main():
             dropout = 0.1,
             emb_dropout = 0.1
         )
+
+        # IDM MLP_DIM
     elif(args.model == 'gvit'):
         model = InpaitingGViT(
             context_size = args.context_size,
@@ -199,28 +202,28 @@ def main():
         bit_depth=args.bit_depth,
         repeats = args.test_repeats * args.n_crops,
     )
-
+#TODO idm increase workers maybe
     train_loader = DataLoader(train_data, shuffle=True, batch_size=args.batch_size, num_workers=8, pin_memory=True)
     val_loader = DataLoader(val_data, shuffle=False, batch_size=args.batch_size, num_workers=8, pin_memory=True)
     test_loader = DataLoader(test_data, shuffle=False, batch_size=1, num_workers=8, pin_memory=True)
 
 
-    wandb.init(
-      # Set the project where this run will be logged
-      project='image_inpainting', 
-      # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
-      name=f'{args.project_name}_cs{args.context_size}_ps{args.predictor_size}_n_crops{args.n_crops}_trainrep{args.train_repeats}_testrep{args.test_repeats}',
-      config={
-        'epochs': args.epochs,
-        'batch_size': args.batch_size,
-        'TrainingSet':args.train_path,
-        'ValidationSet': args.val_path,
-        'TestSet': args.test_path,
-        'Model': args.model,
-        'Context':args.context_size,
-        'Predictor':args.predictor_size,
-        'bit':args.bit_depth
-        })
+    # wandb.init(
+    #   # Set the project where this run will be logged
+    #   project='image_inpainting',
+    #   # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
+    #   name=f'{args.project_name}_cs{args.context_size}_ps{args.predictor_size}_n_crops{args.n_crops}_trainrep{args.train_repeats}_testrep{args.test_repeats}',
+    #   config={
+    #     'epochs': args.epochs,
+    #     'batch_size': args.batch_size,
+    #     'TrainingSet':args.train_path,
+    #     'ValidationSet': args.val_path,
+    #     'TestSet': args.test_path,
+    #     'Model': args.model,
+    #     'Context':args.context_size,
+    #     'Predictor':args.predictor_size,
+    #     'bit':args.bit_depth
+    #     })
     
     for epoch in range(args.start_epoch, args.epochs):
 
@@ -255,13 +258,15 @@ def main():
         loss_test = validate(test_loader, model, criterion,device, epoch,tag='test/loss')
         best_loss_test = min(loss_test, best_loss_test)
 
-        wandb.log({
-            'train/best_loss':best_loss_train,
-            'val/best_loss':best_loss_val,
-            'test/best_loss':best_loss_test,
-        },step = epoch)
-
-    wandb.finish()
+        print(f"train loss, {loss_train:.3f}, val loss, {loss_val:.3f}", file=open("/scratch/results_evc/epoch_mse.csv",'a'))
+        print(f"Epoch: {epoch}\n", file=open(f"/scratch/results_evc/batch_mse.csv", 'a'))
+    #     wandb.log({
+    #         'train/best_loss':best_loss_train,
+    #         'val/best_loss':best_loss_val,
+    #         'test/best_loss':best_loss_test,
+    #     },step = epoch)
+    #
+    # wandb.finish()
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
@@ -309,17 +314,20 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        pbar.set_postfix({
-            'loss': f'{losses.val:.3f} ({losses.avg:.3f})',
-        })
+        # pbar.set_postfix({
+        #     'loss': f'{losses.val:.3f} ({losses.avg:.3f})',
+        # })
+        print(f"loss, {losses.val:.3f}, loss_avg, {losses.avg:.3f}", file=open(f"/scratch/results_evc/batch_mse.csv", 'a'))
 
         #if i % args.print_freq == 0:
         #    progress.display(i + 1)
     progress.display_summary()
-    wandb.log({
-        'train/loss':losses.avg,
-        'lr': optimizer.param_groups[0]['lr']
-    },step = epoch)
+    # wandb.log({
+    #     'train/loss':losses.avg,
+    #     'lr': optimizer.param_groups[0]['lr']
+    # },step = epoch)
+
+
     return losses.avg
 
 
@@ -366,9 +374,9 @@ def validate(val_loader, model, criterion, device, epoch, tag='val/loss'):
     run_validate(val_loader)
 
     progress.display_summary()
-    wandb.log({
-        tag:losses.avg,
-    }, step = epoch)
+    # wandb.log({
+    #     tag:losses.avg,
+    # }, step = epoch)
 
     return losses.avg
 
